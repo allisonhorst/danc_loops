@@ -1,0 +1,226 @@
+---
+title: "Looping over columns & rows with tidyverse functions"
+subtitle: "Add across and rowwise to your looping toolkit"
+author: "Allison Horst"
+date: 'UCSB Data Analysis & Coding Club (DAnC) 2022-02-24'
+output: 
+  html_document: 
+    css: style.css
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE,
+                      warning = FALSE)
+
+library(kableExtra)
+```
+
+> "Of course, someone has to write loops. It doesn’t have to be you. — Jenny Bryan"
+
+```{r, fig.align = "center", echo = FALSE, fig.cap = "From Hadley Wickham's 2019 talk on The Joy of Functional Programming (for Data Science)"}
+knitr::include_graphics("loop_feelings.png")
+```
+
+# Overview
+
+In a previous DAnC workshop, you learned about basic for loops in R to iterate across multiple elements and apply some operation to each. Writing for loops from scratch is a critical skill for any data scientist. But there are also some helpful alternatives! 
+In this session, I'll:
+
+1. Introduce myself and briefly describe my background in environmental data science (20 min)
+
+2. Demo several other useful options for iteration with tidyverse functions `dplyr::across()` and `dplyr::rowwise()` 
+
+# Set-up
+
+- Create a new R script or R Markdown document
+- Attach the `tidyverse` and `palmerpenguins` packages
+
+```{r}
+library(tidyverse)
+library(palmerpenguins)
+```
+
+# From scratch for loop refresher
+
+## A reminder loop
+
+When we write a for loop, we ask R to iterate over elements in a series and apply some operation to them. For example, if we had a vector containing "pika", "fox", and "octopus" we could automate a statemnt "My favorite animal is the..." followed by each species by writing something like this:  
+
+```{r}
+# Create a vector of animals:
+animals <- c("pika", "fox", "octopus") 
+
+# Write a loop that iterates over all animals, adding "My favorite animal" before:
+for (i in seq_along(animals)) {
+  statement <- paste("My favorite animal is the", animals[i])
+  print(statement)
+}
+
+```
+
+As a reminder, `seq_along()` is a nice little function that creates a sequence starting at 1, continuing to the length of the vector. For example, `seq_along(animals)` here creates the sequence 1, 2, 3. 
+
+## Some other (maybe more realistic) scenarios
+
+There are all kinds of scenarios in data science where we may want to iterate over elements. For example: 
+
+- Iterating over columns to find the mean for each
+- Iterating over files in a directory to import each 
+- Iterating over rows to find the mean of all columns by *row*
+- Iterating over data frames to create a scatter plot of each
+- And a whole bunch more!
+
+# Other options for loops
+
+## dplyr::across()
+
+### Use `dplyr::across()` to iterate across columns
+
+The `dplyr::across()` function "makes it easy to apply the same transformation to multiple columns," and plays nicely with a number of helper functions and options for customized iteration over the columns you're interested in. Generally, the `across()` function will be within `mutate()` or `summarize()`, and follows the basic structure: 
+
+```{r, eval = FALSE}
+across(.cols = (which columns?), .fns = (which functions?))
+```
+
+Let's take a look at the `penguins` data with `dplyr::glimpse`:
+
+```{r}
+glimpse(penguins)
+```
+
+### Example 1: Apply something across all columns
+
+Convert all columns to class "character." 
+
+```{r}
+penguins_chr <- penguins %>% 
+  mutate(across(.cols = everything(), as.character))
+
+# Check out the classes: 
+glimpse(penguins_chr)
+```
+
+### Example 2: Adding `where()` to specify columns
+
+We can also specify which columns we want to apply the function to, using either a vector of column names (e.g. `c(species, island)`) *or* by using little helper functions within `where()`. For example, to only apply the square root (`sqrt`) function across numeric columns, I could use the following within `mutate()`:
+
+```{r, eval = FALSE}
+across(.cols = where(is.numeric), .fns = sqrt)
+```
+
+**Note:** The `species`, `island` and `sex` columns in `penguins` are stored as factors. 
+
+Let's convert all content in any factor variables to lowercase: 
+```{r}
+penguins %>% 
+  mutate(across(.cols = where(is.factor), .fns = tolower))
+```
+
+More often, you won't see the arguments explicitly called, e.g.:
+```{r}
+penguins %>% 
+  mutate(across(where(is.factor), tolower))
+```
+
+### Example 3: Within `summarize()` to find summary statistics by column
+
+Find the mean and standard deviation of all columns that end with `mm`:
+```{r}
+penguins %>% 
+  summarize(across(ends_with("mm"), mean, na.rm = TRUE))
+```
+
+### Example 4: Within `group_by() %>% summarize()`
+
+## dplyr::rowwise()
+
+### Use `dplyr::rowwise()` to iterate over rows
+
+We used `across()` above to apply a function *across* multiple columns. What if we want to perform an operation on each *row*? 
+
+You might think, "Oh, just use mutate and do the operation." But there are some issues with that - like if I have something like this: 
+
+```{r, echo = FALSE}
+df <- tribble(
+  ~col_a, ~col_b,
+  1, 1,
+  10, 20
+)
+
+df %>% 
+  kable() %>% 
+  kable_styling(full_width = FALSE)
+```
+
+What happens if we use `mutate()` to find the mean of each *row*? 
+
+```{r}
+df %>% 
+  mutate(mean_val = mean(c(col_a, col_b)))
+
+df %>% 
+  mutate(sum_val = sum(col_a, col_b))
+
+df %>% 
+  mutate(sum_val = col_a + col_b)
+```
+
+Hmm...that is not what we would expect. This finds the mean of *all* values in the data frame and returns that in the new column. 
+
+#### ASIDE: Vectorized functions!
+
+So how do we specify that we want to loop across each row? Use `rowwise()`!
+
+```{r}
+df %>% 
+  rowwise() %>% 
+  mutate(mean_val = mean(c(col_a, col_b)))
+```
+
+# Resources 
+
+## Learn more about `dplyr::across()`
+
+- Tidyverse `dplyr::across()` [documentation](https://dplyr.tidyverse.org/reference/across.html)
+- [Blog post](https://www.rebeccabarter.com/blog/2020-07-09-across/) by Rebecca Barter
+- More examples from my [dplyr tutorial](https://allisonhorst.shinyapps.io/dplyr-learnr/#section-dplyracross) 
+
+## Learn more about `rowwise()`
+
+- Tidyverse `dplyr::rowwise()` [documentation](https://dplyr.tidyverse.org/articles/rowwise.html)
+
+# Alternatives
+
+## `apply()` family of functions 
+
+See: `?apply()`
+
+The `apply()` function "Returns a vector or array or list of values obtained by applying a function to margins of an array or matrix," where *margins* here can be either columns or rows. We'll use just one of the `apply()` functions, `lapply()` (there are others - `sapply()`, `vapply()`, etc.).
+
+The general structure of `lapply()`: 
+
+```{r, eval = FALSE}
+lapply(vector / list, FUN = function)
+```
+
+#### Example: 
+
+```{r}
+mtcars %>% 
+  apply(X = ., MARGIN = 2, FUN = mean)
+```
+
+## `purrr::map()`
+
+You can use `purrr::map()` to iterate over pretty much anything - just consider it might be a bigger tool than you need (e.g. if `across()` or `rowwise()` does what you need, you may not need to worry about `purrr`).
+
+```{r}
+penguins %>% 
+  split(.$species) %>%
+  map(~lm(body_mass_g ~ flipper_length_mm, data = .x)) %>% 
+  map(summary) %>% 
+  map("coefficients")
+```
+
+- Tidyverse `purrr::map()` [documentation](https://purrr.tidyverse.org/reference/map.html)

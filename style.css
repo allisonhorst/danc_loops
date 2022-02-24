@@ -1,0 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible&family=Red+Hat+Mono:wght@300&display=swap');
+
+h1 {
+  font-family: 'Atkinson Hyperlegible', sans-serif;
+  color: teal;
+}
+
+h2 {
+  font-family: 'Atkinson Hyperlegible', sans-serif;
+  color: steelblue;
+}
+
+h3 {
+  font-family: 'Atkinson Hyperlegible', sans-serif;
+  color: black;
+}
+
+body {
+  font-family: 'Atkinson Hyperlegible', sans-serif;
+  color: black;
+}
+
+a {
+  color: teal;
+}
+
+a:hover, a:focus {
+    color: mediumturquoise;
+    text-decoration: underline;
+}
+
+pre.r {
+  color: black;
+}
+
+span.hljs-comment {
+  color: teal;
+}
+
+li.tocify-item.list-group-item.active {
+  background-color: teal;
+}
+
+code {
+  font-family: 'Red Hat Mono', monospace;
+}
