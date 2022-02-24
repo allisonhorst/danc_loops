@@ -208,6 +208,92 @@ window.buildTabsets = function(tocID) {
 };
 
 </script>
+<script>
+window.initializeCodeFolding = function(show) {
+
+  // handlers for show-all and hide all
+  $("#rmd-show-all-code").click(function() {
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('show');
+    });
+  });
+  $("#rmd-hide-all-code").click(function() {
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('hide');
+    });
+  });
+
+  // index for unique code element ids
+  var currentIndex = 1;
+
+  // select all R code blocks
+  var rCodeBlocks = $('pre.r, pre.python, pre.bash, pre.sql, pre.cpp, pre.stan, pre.julia, pre.foldable');
+  rCodeBlocks.each(function() {
+
+    // create a collapsable div to wrap the code in
+    var div = $('<div class="collapse r-code-collapse"></div>');
+    var showThis = (show || $(this).hasClass('fold-show')) && !$(this).hasClass('fold-hide');
+    var id = 'rcode-643E0F36' + currentIndex++;
+    div.attr('id', id);
+    $(this).before(div);
+    $(this).detach().appendTo(div);
+
+    // add a show code button right above
+    var showCodeText = $('<span>' + (showThis ? 'Hide' : 'Code') + '</span>');
+    var showCodeButton = $('<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm code-folding-btn pull-right float-right"></button>');
+    showCodeButton.append(showCodeText);
+    showCodeButton
+        .attr('data-toggle', 'collapse')
+        .attr('data-target', '#' + id)
+        .attr('aria-expanded', showThis)
+        .attr('aria-controls', id);
+
+    var buttonRow = $('<div class="row"></div>');
+    var buttonCol = $('<div class="col-md-12"></div>');
+
+    buttonCol.append(showCodeButton);
+    buttonRow.append(buttonCol);
+
+    div.before(buttonRow);
+
+    // show the div if necessary
+    if (showThis) div.collapse('show');
+
+    // update state of button on show/hide
+    //   * Change text
+    //   * add a class for intermediate states styling
+    div.on('hide.bs.collapse', function () {
+      showCodeText.text('Code');
+      showCodeButton.addClass('btn-collapsing');
+    });
+    div.on('hidden.bs.collapse', function () {
+      showCodeButton.removeClass('btn-collapsing');
+    });
+    div.on('show.bs.collapse', function () {
+      showCodeText.text('Hide');
+      showCodeButton.addClass('btn-expanding');
+    });
+    div.on('shown.bs.collapse', function () {
+      showCodeButton.removeClass('btn-expanding');
+    });
+
+  });
+
+}
+</script>
+<script>
+window.initializeSourceEmbed = function(filename) {
+  $("#rmd-download-source").click(function() {
+    var src = $("#rmd-source-code").html();
+    var a = document.createElement('a');
+    a.href = "data:text/x-r-markdown;base64," + src;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  });
+};
+</script>
 <style type="text/css">.hljs-literal {
 color: #990073;
 }
@@ -475,6 +561,11 @@ if (window.hljs) {
 
 
 
+<style type="text/css">
+#rmd-source-code {
+  display: none;
+}
+</style>
 
 
 <style type="text/css">@font-face {
@@ -617,6 +708,9 @@ pre code {
 </style>
 
 <!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
 
 
 
@@ -632,6 +726,13 @@ pre code {
 
 
 <div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-download-source" href="#">Download Rmd</a></li>
+</ul>
+</div>
 
 
 
@@ -665,7 +766,7 @@ scientist. But there are also some helpful alternatives! In this
 session, I’ll:</p>
 <ol style="list-style-type: decimal">
 <li><p>Introduce myself and briefly describe my background in
-environmental data science (20 min)</p></li>
+environmental data science (20 - 30 min)</p></li>
 <li><p>Demo several other useful options for iteration with tidyverse
 functions <code>dplyr::across()</code> and
 <code>dplyr::rowwise()</code></p></li>
@@ -674,7 +775,9 @@ functions <code>dplyr::across()</code> and
 <div id="set-up" class="section level1">
 <h1>Set-up</h1>
 <ul>
-<li>Create a new R script or R Markdown document</li>
+<li>Create a new R script or R Markdown document OR click the Code &gt;
+Download button at the top of the shared link to download the
+pre-populated .Rmd</li>
 <li>Attach the <code>tidyverse</code> and <code>palmerpenguins</code>
 packages</li>
 </ul>
@@ -816,8 +919,7 @@ factors.</p>
 <div id="example-3-within-summarize-to-find-summary-statistics-by-column" class="section level3">
 <h3>Example 3: Within <code>summarize()</code> to find summary
 statistics by column</h3>
-<p>Find the mean and standard deviation of all columns that end with
-<code>mm</code>:</p>
+<p>Find the mean of all columns that end with <code>mm</code>:</p>
 <pre class="r"><code>penguins %&gt;% 
   summarize(across(ends_with(&quot;mm&quot;), mean, na.rm = TRUE))</code></pre>
 <pre><code>## # A tibble: 1 × 3
@@ -827,6 +929,17 @@ statistics by column</h3>
 </div>
 <div id="example-4-within-group_by-summarize" class="section level3">
 <h3>Example 4: Within <code>group_by() %&gt;% summarize()</code></h3>
+<p>Find the mean of all columns that start with <code>bill</code> by
+<code>species</code>:</p>
+<pre class="r"><code>penguins %&gt;% 
+  group_by(species) %&gt;% 
+  summarize(across(starts_with(&quot;bill&quot;), mean, na.rm = TRUE))</code></pre>
+<pre><code>## # A tibble: 3 × 3
+##   species   bill_length_mm bill_depth_mm
+##   &lt;fct&gt;              &lt;dbl&gt;         &lt;dbl&gt;
+## 1 Adelie              38.8          18.3
+## 2 Chinstrap           48.8          18.4
+## 3 Gentoo              47.5          15.0</code></pre>
 </div>
 </div>
 <div id="dplyrrowwise" class="section level2">
@@ -869,8 +982,8 @@ col_b
 </tr>
 </tbody>
 </table>
-<p>What happens if we use <code>mutate()</code> to find the mean of each
-<em>row</em>?</p>
+<p>What happens if we try to use <code>mutate()</code> to find the mean
+of each <em>row</em>?</p>
 <pre class="r"><code>df %&gt;% 
   mutate(mean_val = mean(c(col_a, col_b)))</code></pre>
 <pre><code>## # A tibble: 2 × 3
@@ -895,8 +1008,6 @@ col_b
 <p>Hmm…that is not what we would expect. This finds the mean of
 <em>all</em> values in the data frame and returns that in the new
 column.</p>
-<div id="aside-vectorized-functions" class="section level4">
-<h4>ASIDE: Vectorized functions!</h4>
 <p>So how do we specify that we want to loop across each row? Use
 <code>rowwise()</code>!</p>
 <pre class="r"><code>df %&gt;% 
@@ -909,6 +1020,63 @@ column.</p>
 ## 1     1     1        1
 ## 2    10    20       15</code></pre>
 </div>
+<div id="example-5-rowwise-mutate-to-add-a-column-with-a-value-calculated-across-rows" class="section level3">
+<h3>Example 5: <code>rowwise() %&gt;% mutate()</code> to add a column
+with a value calculated across rows</h3>
+<p>Starting with penguins, let’s create a <code>rowwise()</code> data
+frame, then add a new column that is the sum of all values in columns of
+class <code>double</code>. First, let’s chat about what that might look
+like.</p>
+<pre class="r"><code>penguins %&gt;% 
+  rowwise() %&gt;% 
+  mutate(sum_bill = sum(across(where(is.double))))</code></pre>
+<pre><code>## # A tibble: 344 × 9
+## # Rowwise: 
+##    species island    bill_length_mm bill_depth_mm flipper_length_mm body_mass_g
+##    &lt;fct&gt;   &lt;fct&gt;              &lt;dbl&gt;         &lt;dbl&gt;             &lt;int&gt;       &lt;int&gt;
+##  1 Adelie  Torgersen           39.1          18.7               181        3750
+##  2 Adelie  Torgersen           39.5          17.4               186        3800
+##  3 Adelie  Torgersen           40.3          18                 195        3250
+##  4 Adelie  Torgersen           NA            NA                  NA          NA
+##  5 Adelie  Torgersen           36.7          19.3               193        3450
+##  6 Adelie  Torgersen           39.3          20.6               190        3650
+##  7 Adelie  Torgersen           38.9          17.8               181        3625
+##  8 Adelie  Torgersen           39.2          19.6               195        4675
+##  9 Adelie  Torgersen           34.1          18.1               193        3475
+## 10 Adelie  Torgersen           42            20.2               190        4250
+## # … with 334 more rows, and 3 more variables: sex &lt;fct&gt;, year &lt;int&gt;,
+## #   sum_bill &lt;dbl&gt;</code></pre>
+</div>
+<div id="example-6-rowwise-summarize-to-calculate-a-summary-statistics-by-row" class="section level3">
+<h3>Example 6: <code>rowwise() %&gt;% summarize()</code> to calculate a
+summary statistics by row</h3>
+<p>Starting with penguins, let’s use <code>summarize()</code> to
+calculate and return a single summry statistic by row.</p>
+<pre class="r"><code>penguins %&gt;% 
+  rowwise() %&gt;% 
+  summarize(sum_bill = sum(c(bill_length_mm, bill_depth_mm)))</code></pre>
+<pre><code>## # A tibble: 344 × 1
+##    sum_bill
+##       &lt;dbl&gt;
+##  1     57.8
+##  2     56.9
+##  3     58.3
+##  4     NA  
+##  5     56  
+##  6     59.9
+##  7     56.7
+##  8     58.8
+##  9     52.2
+## 10     62.2
+## # … with 334 more rows</code></pre>
+<p><strong>Let’s compare this:</strong> What is the output if we don’t
+use <code>rowwise()</code> here?</p>
+<pre class="r"><code>penguins %&gt;% 
+  summarize(sum_bill = sum(c(bill_length_mm, bill_depth_mm)))</code></pre>
+<pre><code>## # A tibble: 1 × 1
+##   sum_bill
+##      &lt;dbl&gt;
+## 1       NA</code></pre>
 </div>
 </div>
 </div>
@@ -944,8 +1112,8 @@ We’ll use just one of the <code>apply()</code> functions,
 <code>vapply()</code>, etc.).</p>
 <p>The general structure of <code>lapply()</code>:</p>
 <pre class="r"><code>lapply(vector / list, FUN = function)</code></pre>
-<div id="example" class="section level4">
-<h4>Example:</h4>
+<div id="example-basic-apply-over-columns" class="section level4">
+<h4>Example: basic <code>apply()</code> over columns</h4>
 <pre class="r"><code>mtcars %&gt;% 
   apply(X = ., MARGIN = 2, FUN = mean)</code></pre>
 <pre><code>##        mpg        cyl       disp         hp       drat         wt       qsec 
@@ -982,9 +1150,13 @@ need, you may not need to worry about <code>purrr</code>).</p>
 <ul>
 <li>Tidyverse <code>purrr::map()</code> <a href="https://purrr.tidyverse.org/reference/map.html">documentation</a></li>
 </ul>
+<div id="end---have-fun-embracing-or-avoiding-for-loops" class="section level3">
+<h3>End - have fun embracing OR avoiding for loops!</h3>
+</div>
 </div>
 </div>
 
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiTG9vcGluZyBvdmVyIGNvbHVtbnMgJiByb3dzIHdpdGggdGlkeXZlcnNlIGZ1bmN0aW9ucyIKc3VidGl0bGU6ICJBZGQgYWNyb3NzIGFuZCByb3d3aXNlIHRvIHlvdXIgbG9vcGluZyB0b29sa2l0IgphdXRob3I6ICJBbGxpc29uIEhvcnN0IgpkYXRlOiAnVUNTQiBEYXRhIEFuYWx5c2lzICYgQ29kaW5nIENsdWIgKERBbkMpIDIwMjItMDItMjQnCm91dHB1dDogCiAgaHRtbF9kb2N1bWVudDogCiAgICBjc3M6IHN0eWxlLmNzcwogICAgY29kZV9kb3dubG9hZDogdHJ1ZQotLS0KCmBgYHtyIHNldHVwLCBpbmNsdWRlPUZBTFNFfQprbml0cjo6b3B0c19jaHVuayRzZXQoZWNobyA9IFRSVUUsCiAgICAgICAgICAgICAgICAgICAgICBtZXNzYWdlID0gRkFMU0UsCiAgICAgICAgICAgICAgICAgICAgICB3YXJuaW5nID0gRkFMU0UpCgpsaWJyYXJ5KGthYmxlRXh0cmEpCmBgYAoKPiAiT2YgY291cnNlLCBzb21lb25lIGhhcyB0byB3cml0ZSBsb29wcy4gSXQgZG9lc27igJl0IGhhdmUgdG8gYmUgeW91LiDigJQgSmVubnkgQnJ5YW4iCgpgYGB7ciwgZmlnLmFsaWduID0gImNlbnRlciIsIGVjaG8gPSBGQUxTRSwgZmlnLmNhcCA9ICJGcm9tIEhhZGxleSBXaWNraGFtJ3MgMjAxOSB0YWxrIG9uIFRoZSBKb3kgb2YgRnVuY3Rpb25hbCBQcm9ncmFtbWluZyAoZm9yIERhdGEgU2NpZW5jZSkifQprbml0cjo6aW5jbHVkZV9ncmFwaGljcygibG9vcF9mZWVsaW5ncy5wbmciKQpgYGAKCiMgT3ZlcnZpZXcKCkluIGEgcHJldmlvdXMgREFuQyB3b3Jrc2hvcCwgeW91IGxlYXJuZWQgYWJvdXQgYmFzaWMgZm9yIGxvb3BzIGluIFIgdG8gaXRlcmF0ZSBhY3Jvc3MgbXVsdGlwbGUgZWxlbWVudHMgYW5kIGFwcGx5IHNvbWUgb3BlcmF0aW9uIHRvIGVhY2guIFdyaXRpbmcgZm9yIGxvb3BzIGZyb20gc2NyYXRjaCBpcyBhIGNyaXRpY2FsIHNraWxsIGZvciBhbnkgZGF0YSBzY2llbnRpc3QuIEJ1dCB0aGVyZSBhcmUgYWxzbyBzb21lIGhlbHBmdWwgYWx0ZXJuYXRpdmVzISAKSW4gdGhpcyBzZXNzaW9uLCBJJ2xsOgoKMS4gSW50cm9kdWNlIG15c2VsZiBhbmQgYnJpZWZseSBkZXNjcmliZSBteSBiYWNrZ3JvdW5kIGluIGVudmlyb25tZW50YWwgZGF0YSBzY2llbmNlICgyMCAtIDMwIG1pbikKCjIuIERlbW8gc2V2ZXJhbCBvdGhlciB1c2VmdWwgb3B0aW9ucyBmb3IgaXRlcmF0aW9uIHdpdGggdGlkeXZlcnNlIGZ1bmN0aW9ucyBgZHBseXI6OmFjcm9zcygpYCBhbmQgYGRwbHlyOjpyb3d3aXNlKClgIAoKIyBTZXQtdXAKCi0gQ3JlYXRlIGEgbmV3IFIgc2NyaXB0IG9yIFIgTWFya2Rvd24gZG9jdW1lbnQgT1IgY2xpY2sgdGhlIENvZGUgPiBEb3dubG9hZCBidXR0b24gYXQgdGhlIHRvcCBvZiB0aGUgc2hhcmVkIGxpbmsgdG8gZG93bmxvYWQgdGhlIHByZS1wb3B1bGF0ZWQgLlJtZAotIEF0dGFjaCB0aGUgYHRpZHl2ZXJzZWAgYW5kIGBwYWxtZXJwZW5ndWluc2AgcGFja2FnZXMKCmBgYHtyfQpsaWJyYXJ5KHRpZHl2ZXJzZSkKbGlicmFyeShwYWxtZXJwZW5ndWlucykKYGBgCgojIEZyb20gc2NyYXRjaCBmb3IgbG9vcCByZWZyZXNoZXIKCiMjIEEgcmVtaW5kZXIgbG9vcAoKV2hlbiB3ZSB3cml0ZSBhIGZvciBsb29wLCB3ZSBhc2sgUiB0byBpdGVyYXRlIG92ZXIgZWxlbWVudHMgaW4gYSBzZXJpZXMgYW5kIGFwcGx5IHNvbWUgb3BlcmF0aW9uIHRvIHRoZW0uIEZvciBleGFtcGxlLCBpZiB3ZSBoYWQgYSB2ZWN0b3IgY29udGFpbmluZyAicGlrYSIsICJmb3giLCBhbmQgIm9jdG9wdXMiIHdlIGNvdWxkIGF1dG9tYXRlIGEgc3RhdGVtbnQgIk15IGZhdm9yaXRlIGFuaW1hbCBpcyB0aGUuLi4iIGZvbGxvd2VkIGJ5IGVhY2ggc3BlY2llcyBieSB3cml0aW5nIHNvbWV0aGluZyBsaWtlIHRoaXM6ICAKCmBgYHtyfQojIENyZWF0ZSBhIHZlY3RvciBvZiBhbmltYWxzOgphbmltYWxzIDwtIGMoInBpa2EiLCAiZm94IiwgIm9jdG9wdXMiKSAKCiMgV3JpdGUgYSBsb29wIHRoYXQgaXRlcmF0ZXMgb3ZlciBhbGwgYW5pbWFscywgYWRkaW5nICJNeSBmYXZvcml0ZSBhbmltYWwiIGJlZm9yZToKZm9yIChpIGluIHNlcV9hbG9uZyhhbmltYWxzKSkgewogIHN0YXRlbWVudCA8LSBwYXN0ZSgiTXkgZmF2b3JpdGUgYW5pbWFsIGlzIHRoZSIsIGFuaW1hbHNbaV0pCiAgcHJpbnQoc3RhdGVtZW50KQp9CgpgYGAKCkFzIGEgcmVtaW5kZXIsIGBzZXFfYWxvbmcoKWAgaXMgYSBuaWNlIGxpdHRsZSBmdW5jdGlvbiB0aGF0IGNyZWF0ZXMgYSBzZXF1ZW5jZSBzdGFydGluZyBhdCAxLCBjb250aW51aW5nIHRvIHRoZSBsZW5ndGggb2YgdGhlIHZlY3Rvci4gRm9yIGV4YW1wbGUsIGBzZXFfYWxvbmcoYW5pbWFscylgIGhlcmUgY3JlYXRlcyB0aGUgc2VxdWVuY2UgMSwgMiwgMy4gCgojIyBTb21lIG90aGVyIChtYXliZSBtb3JlIHJlYWxpc3RpYykgc2NlbmFyaW9zCgpUaGVyZSBhcmUgYWxsIGtpbmRzIG9mIHNjZW5hcmlvcyBpbiBkYXRhIHNjaWVuY2Ugd2hlcmUgd2UgbWF5IHdhbnQgdG8gaXRlcmF0ZSBvdmVyIGVsZW1lbnRzLiBGb3IgZXhhbXBsZTogCgotIEl0ZXJhdGluZyBvdmVyIGNvbHVtbnMgdG8gZmluZCB0aGUgbWVhbiBmb3IgZWFjaAotIEl0ZXJhdGluZyBvdmVyIGZpbGVzIGluIGEgZGlyZWN0b3J5IHRvIGltcG9ydCBlYWNoIAotIEl0ZXJhdGluZyBvdmVyIHJvd3MgdG8gZmluZCB0aGUgbWVhbiBvZiBhbGwgY29sdW1ucyBieSAqcm93KgotIEl0ZXJhdGluZyBvdmVyIGRhdGEgZnJhbWVzIHRvIGNyZWF0ZSBhIHNjYXR0ZXIgcGxvdCBvZiBlYWNoCi0gQW5kIGEgd2hvbGUgYnVuY2ggbW9yZSEKCiMgT3RoZXIgb3B0aW9ucyBmb3IgbG9vcHMKCiMjIGRwbHlyOjphY3Jvc3MoKQoKIyMjIFVzZSBgZHBseXI6OmFjcm9zcygpYCB0byBpdGVyYXRlIGFjcm9zcyBjb2x1bW5zCgpUaGUgYGRwbHlyOjphY3Jvc3MoKWAgZnVuY3Rpb24gIm1ha2VzIGl0IGVhc3kgdG8gYXBwbHkgdGhlIHNhbWUgdHJhbnNmb3JtYXRpb24gdG8gbXVsdGlwbGUgY29sdW1ucywiIGFuZCBwbGF5cyBuaWNlbHkgd2l0aCBhIG51bWJlciBvZiBoZWxwZXIgZnVuY3Rpb25zIGFuZCBvcHRpb25zIGZvciBjdXN0b21pemVkIGl0ZXJhdGlvbiBvdmVyIHRoZSBjb2x1bW5zIHlvdSdyZSBpbnRlcmVzdGVkIGluLiBHZW5lcmFsbHksIHRoZSBgYWNyb3NzKClgIGZ1bmN0aW9uIHdpbGwgYmUgd2l0aGluIGBtdXRhdGUoKWAgb3IgYHN1bW1hcml6ZSgpYCwgYW5kIGZvbGxvd3MgdGhlIGJhc2ljIHN0cnVjdHVyZTogCgpgYGB7ciwgZXZhbCA9IEZBTFNFfQphY3Jvc3MoLmNvbHMgPSAod2hpY2ggY29sdW1ucz8pLCAuZm5zID0gKHdoaWNoIGZ1bmN0aW9ucz8pKQpgYGAKCkxldCdzIHRha2UgYSBsb29rIGF0IHRoZSBgcGVuZ3VpbnNgIGRhdGEgd2l0aCBgZHBseXI6OmdsaW1wc2VgOgoKYGBge3J9CmdsaW1wc2UocGVuZ3VpbnMpCmBgYAoKIyMjIEV4YW1wbGUgMTogQXBwbHkgc29tZXRoaW5nIGFjcm9zcyBhbGwgY29sdW1ucwoKQ29udmVydCBhbGwgY29sdW1ucyB0byBjbGFzcyAiY2hhcmFjdGVyLiIgCgpgYGB7cn0KcGVuZ3VpbnNfY2hyIDwtIHBlbmd1aW5zICU+JSAKICBtdXRhdGUoYWNyb3NzKC5jb2xzID0gZXZlcnl0aGluZygpLCBhcy5jaGFyYWN0ZXIpKQoKIyBDaGVjayBvdXQgdGhlIGNsYXNzZXM6IApnbGltcHNlKHBlbmd1aW5zX2NocikKYGBgCgojIyMgRXhhbXBsZSAyOiBBZGRpbmcgYHdoZXJlKClgIHRvIHNwZWNpZnkgY29sdW1ucwoKV2UgY2FuIGFsc28gc3BlY2lmeSB3aGljaCBjb2x1bW5zIHdlIHdhbnQgdG8gYXBwbHkgdGhlIGZ1bmN0aW9uIHRvLCB1c2luZyBlaXRoZXIgYSB2ZWN0b3Igb2YgY29sdW1uIG5hbWVzIChlLmcuIGBjKHNwZWNpZXMsIGlzbGFuZClgKSAqb3IqIGJ5IHVzaW5nIGxpdHRsZSBoZWxwZXIgZnVuY3Rpb25zIHdpdGhpbiBgd2hlcmUoKWAuIEZvciBleGFtcGxlLCB0byBvbmx5IGFwcGx5IHRoZSBzcXVhcmUgcm9vdCAoYHNxcnRgKSBmdW5jdGlvbiBhY3Jvc3MgbnVtZXJpYyBjb2x1bW5zLCBJIGNvdWxkIHVzZSB0aGUgZm9sbG93aW5nIHdpdGhpbiBgbXV0YXRlKClgOgoKYGBge3IsIGV2YWwgPSBGQUxTRX0KYWNyb3NzKC5jb2xzID0gd2hlcmUoaXMubnVtZXJpYyksIC5mbnMgPSBzcXJ0KQpgYGAKCioqTm90ZToqKiBUaGUgYHNwZWNpZXNgLCBgaXNsYW5kYCBhbmQgYHNleGAgY29sdW1ucyBpbiBgcGVuZ3VpbnNgIGFyZSBzdG9yZWQgYXMgZmFjdG9ycy4gCgpMZXQncyBjb252ZXJ0IGFsbCBjb250ZW50IGluIGFueSBmYWN0b3IgdmFyaWFibGVzIHRvIGxvd2VyY2FzZTogCmBgYHtyfQpwZW5ndWlucyAlPiUgCiAgbXV0YXRlKGFjcm9zcyguY29scyA9IHdoZXJlKGlzLmZhY3RvciksIC5mbnMgPSB0b2xvd2VyKSkKYGBgCgpNb3JlIG9mdGVuLCB5b3Ugd29uJ3Qgc2VlIHRoZSBhcmd1bWVudHMgZXhwbGljaXRseSBjYWxsZWQsIGUuZy46CmBgYHtyfQpwZW5ndWlucyAlPiUgCiAgbXV0YXRlKGFjcm9zcyh3aGVyZShpcy5mYWN0b3IpLCB0b2xvd2VyKSkKYGBgCgojIyMgRXhhbXBsZSAzOiBXaXRoaW4gYHN1bW1hcml6ZSgpYCB0byBmaW5kIHN1bW1hcnkgc3RhdGlzdGljcyBieSBjb2x1bW4KCkZpbmQgdGhlIG1lYW4gb2YgYWxsIGNvbHVtbnMgdGhhdCBlbmQgd2l0aCBgbW1gOgpgYGB7cn0KcGVuZ3VpbnMgJT4lIAogIHN1bW1hcml6ZShhY3Jvc3MoZW5kc193aXRoKCJtbSIpLCBtZWFuLCBuYS5ybSA9IFRSVUUpKQpgYGAKCiMjIyBFeGFtcGxlIDQ6IFdpdGhpbiBgZ3JvdXBfYnkoKSAlPiUgc3VtbWFyaXplKClgCgpGaW5kIHRoZSBtZWFuIG9mIGFsbCBjb2x1bW5zIHRoYXQgc3RhcnQgd2l0aCBgYmlsbGAgYnkgYHNwZWNpZXNgOgpgYGB7cn0KcGVuZ3VpbnMgJT4lIAogIGdyb3VwX2J5KHNwZWNpZXMpICU+JSAKICBzdW1tYXJpemUoYWNyb3NzKHN0YXJ0c193aXRoKCJiaWxsIiksIG1lYW4sIG5hLnJtID0gVFJVRSkpCmBgYAoKIyMgZHBseXI6OnJvd3dpc2UoKQoKIyMjIFVzZSBgZHBseXI6OnJvd3dpc2UoKWAgdG8gaXRlcmF0ZSBvdmVyIHJvd3MKCldlIHVzZWQgYGFjcm9zcygpYCBhYm92ZSB0byBhcHBseSBhIGZ1bmN0aW9uICphY3Jvc3MqIG11bHRpcGxlIGNvbHVtbnMuIFdoYXQgaWYgd2Ugd2FudCB0byBwZXJmb3JtIGFuIG9wZXJhdGlvbiBvbiBlYWNoICpyb3cqPyAKCllvdSBtaWdodCB0aGluaywgIk9oLCBqdXN0IHVzZSBtdXRhdGUgYW5kIGRvIHRoZSBvcGVyYXRpb24uIiBCdXQgdGhlcmUgYXJlIHNvbWUgaXNzdWVzIHdpdGggdGhhdCAtIGxpa2UgaWYgSSBoYXZlIHNvbWV0aGluZyBsaWtlIHRoaXM6IAoKYGBge3IsIGVjaG8gPSBGQUxTRX0KZGYgPC0gdHJpYmJsZSgKICB+Y29sX2EsIH5jb2xfYiwKICAxLCAxLAogIDEwLCAyMAopCgpkZiAlPiUgCiAga2FibGUoKSAlPiUgCiAga2FibGVfc3R5bGluZyhmdWxsX3dpZHRoID0gRkFMU0UpCmBgYAoKV2hhdCBoYXBwZW5zIGlmIHdlIHRyeSB0byB1c2UgYG11dGF0ZSgpYCB0byBmaW5kIHRoZSBtZWFuIG9mIGVhY2ggKnJvdyo/IAoKYGBge3J9CmRmICU+JSAKICBtdXRhdGUobWVhbl92YWwgPSBtZWFuKGMoY29sX2EsIGNvbF9iKSkpCgpkZiAlPiUgCiAgbXV0YXRlKHN1bV92YWwgPSBzdW0oY29sX2EsIGNvbF9iKSkKCmRmICU+JSAKICBtdXRhdGUoc3VtX3ZhbCA9IGNvbF9hICsgY29sX2IpCmBgYAoKSG1tLi4udGhhdCBpcyBub3Qgd2hhdCB3ZSB3b3VsZCBleHBlY3QuIFRoaXMgZmluZHMgdGhlIG1lYW4gb2YgKmFsbCogdmFsdWVzIGluIHRoZSBkYXRhIGZyYW1lIGFuZCByZXR1cm5zIHRoYXQgaW4gdGhlIG5ldyBjb2x1bW4uIAoKU28gaG93IGRvIHdlIHNwZWNpZnkgdGhhdCB3ZSB3YW50IHRvIGxvb3AgYWNyb3NzIGVhY2ggcm93PyBVc2UgYHJvd3dpc2UoKWAhCgpgYGB7cn0KZGYgJT4lIAogIHJvd3dpc2UoKSAlPiUgCiAgbXV0YXRlKG1lYW5fdmFsID0gbWVhbihjKGNvbF9hLCBjb2xfYikpKQpgYGAKCiMjIyBFeGFtcGxlIDU6IGByb3d3aXNlKCkgJT4lIG11dGF0ZSgpYCB0byBhZGQgYSBjb2x1bW4gd2l0aCBhIHZhbHVlIGNhbGN1bGF0ZWQgYWNyb3NzIHJvd3MKClN0YXJ0aW5nIHdpdGggcGVuZ3VpbnMsIGxldCdzIGNyZWF0ZSBhIGByb3d3aXNlKClgIGRhdGEgZnJhbWUsIHRoZW4gYWRkIGEgbmV3IGNvbHVtbiB0aGF0IGlzIHRoZSBzdW0gb2YgYWxsIHZhbHVlcyBpbiBjb2x1bW5zIG9mIGNsYXNzIGBkb3VibGVgLiBGaXJzdCwgbGV0J3MgY2hhdCBhYm91dCB3aGF0IHRoYXQgbWlnaHQgbG9vayBsaWtlLiAKCmBgYHtyfQpwZW5ndWlucyAlPiUgCiAgcm93d2lzZSgpICU+JSAKICBtdXRhdGUoc3VtX2JpbGwgPSBzdW0oYWNyb3NzKHdoZXJlKGlzLmRvdWJsZSkpKSkKYGBgCgojIyMgRXhhbXBsZSA2OiBgcm93d2lzZSgpICU+JSBzdW1tYXJpemUoKWAgdG8gY2FsY3VsYXRlIGEgc3VtbWFyeSBzdGF0aXN0aWNzIGJ5IHJvdwoKU3RhcnRpbmcgd2l0aCBwZW5ndWlucywgbGV0J3MgdXNlIGBzdW1tYXJpemUoKWAgdG8gY2FsY3VsYXRlIGFuZCByZXR1cm4gYSBzaW5nbGUgc3VtbXJ5IHN0YXRpc3RpYyBieSByb3cuIAoKYGBge3J9CnBlbmd1aW5zICU+JSAKICByb3d3aXNlKCkgJT4lIAogIHN1bW1hcml6ZShzdW1fYmlsbCA9IHN1bShjKGJpbGxfbGVuZ3RoX21tLCBiaWxsX2RlcHRoX21tKSkpCmBgYAoKKipMZXQncyBjb21wYXJlIHRoaXM6KiogV2hhdCBpcyB0aGUgb3V0cHV0IGlmIHdlIGRvbid0IHVzZSBgcm93d2lzZSgpYCBoZXJlPwoKYGBge3J9CnBlbmd1aW5zICU+JSAKICBzdW1tYXJpemUoc3VtX2JpbGwgPSBzdW0oYyhiaWxsX2xlbmd0aF9tbSwgYmlsbF9kZXB0aF9tbSkpKQpgYGAKCiMgUmVzb3VyY2VzIAoKIyMgTGVhcm4gbW9yZSBhYm91dCBgZHBseXI6OmFjcm9zcygpYAoKLSBUaWR5dmVyc2UgYGRwbHlyOjphY3Jvc3MoKWAgW2RvY3VtZW50YXRpb25dKGh0dHBzOi8vZHBseXIudGlkeXZlcnNlLm9yZy9yZWZlcmVuY2UvYWNyb3NzLmh0bWwpCi0gW0Jsb2cgcG9zdF0oaHR0cHM6Ly93d3cucmViZWNjYWJhcnRlci5jb20vYmxvZy8yMDIwLTA3LTA5LWFjcm9zcy8pIGJ5IFJlYmVjY2EgQmFydGVyCi0gTW9yZSBleGFtcGxlcyBmcm9tIG15IFtkcGx5ciB0dXRvcmlhbF0oaHR0cHM6Ly9hbGxpc29uaG9yc3Quc2hpbnlhcHBzLmlvL2RwbHlyLWxlYXJuci8jc2VjdGlvbi1kcGx5cmFjcm9zcykgCgojIyBMZWFybiBtb3JlIGFib3V0IGByb3d3aXNlKClgCgotIFRpZHl2ZXJzZSBgZHBseXI6OnJvd3dpc2UoKWAgW2RvY3VtZW50YXRpb25dKGh0dHBzOi8vZHBseXIudGlkeXZlcnNlLm9yZy9hcnRpY2xlcy9yb3d3aXNlLmh0bWwpCgojIEFsdGVybmF0aXZlcwoKIyMgYGFwcGx5KClgIGZhbWlseSBvZiBmdW5jdGlvbnMgCgpTZWU6IGA/YXBwbHkoKWAKClRoZSBgYXBwbHkoKWAgZnVuY3Rpb24gIlJldHVybnMgYSB2ZWN0b3Igb3IgYXJyYXkgb3IgbGlzdCBvZiB2YWx1ZXMgb2J0YWluZWQgYnkgYXBwbHlpbmcgYSBmdW5jdGlvbiB0byBtYXJnaW5zIG9mIGFuIGFycmF5IG9yIG1hdHJpeCwiIHdoZXJlICptYXJnaW5zKiBoZXJlIGNhbiBiZSBlaXRoZXIgY29sdW1ucyBvciByb3dzLiBXZSdsbCB1c2UganVzdCBvbmUgb2YgdGhlIGBhcHBseSgpYCBmdW5jdGlvbnMsIGBsYXBwbHkoKWAgKHRoZXJlIGFyZSBvdGhlcnMgLSBgc2FwcGx5KClgLCBgdmFwcGx5KClgLCBldGMuKS4KClRoZSBnZW5lcmFsIHN0cnVjdHVyZSBvZiBgbGFwcGx5KClgOiAKCmBgYHtyLCBldmFsID0gRkFMU0V9CmxhcHBseSh2ZWN0b3IgLyBsaXN0LCBGVU4gPSBmdW5jdGlvbikKYGBgCgojIyMjIEV4YW1wbGU6IGJhc2ljIGBhcHBseSgpYCBvdmVyIGNvbHVtbnMKCmBgYHtyfQptdGNhcnMgJT4lIAogIGFwcGx5KFggPSAuLCBNQVJHSU4gPSAyLCBGVU4gPSBtZWFuKQpgYGAKCiMjIGBwdXJycjo6bWFwKClgCgpZb3UgY2FuIHVzZSBgcHVycnI6Om1hcCgpYCB0byBpdGVyYXRlIG92ZXIgcHJldHR5IG11Y2ggYW55dGhpbmcgLSBqdXN0IGNvbnNpZGVyIGl0IG1pZ2h0IGJlIGEgYmlnZ2VyIHRvb2wgdGhhbiB5b3UgbmVlZCAoZS5nLiBpZiBgYWNyb3NzKClgIG9yIGByb3d3aXNlKClgIGRvZXMgd2hhdCB5b3UgbmVlZCwgeW91IG1heSBub3QgbmVlZCB0byB3b3JyeSBhYm91dCBgcHVycnJgKS4KCmBgYHtyfQpwZW5ndWlucyAlPiUgCiAgc3BsaXQoLiRzcGVjaWVzKSAlPiUKICBtYXAofmxtKGJvZHlfbWFzc19nIH4gZmxpcHBlcl9sZW5ndGhfbW0sIGRhdGEgPSAueCkpICU+JSAKICBtYXAoc3VtbWFyeSkgJT4lIAogIG1hcCgiY29lZmZpY2llbnRzIikKYGBgCgotIFRpZHl2ZXJzZSBgcHVycnI6Om1hcCgpYCBbZG9jdW1lbnRhdGlvbl0oaHR0cHM6Ly9wdXJyci50aWR5dmVyc2Uub3JnL3JlZmVyZW5jZS9tYXAuaHRtbCkKCiMjIyBFbmQgLSBoYXZlIGZ1biBlbWJyYWNpbmcgT1IgYXZvaWRpbmcgZm9yIGxvb3BzIQo=</div>
 
 
 
@@ -1018,6 +1190,11 @@ $(document).ready(function () {
 </script>
 
 <!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeSourceEmbed("index.Rmd");
+});
+</script>
 
 
 <!-- dynamically load mathjax for compatibility with self-contained -->

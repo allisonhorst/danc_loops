@@ -6,6 +6,7 @@ date: 'UCSB Data Analysis & Coding Club (DAnC) 2022-02-24'
 output: 
   html_document: 
     css: style.css
+    code_download: true
 ---
 
 ```{r setup, include=FALSE}
@@ -27,13 +28,13 @@ knitr::include_graphics("loop_feelings.png")
 In a previous DAnC workshop, you learned about basic for loops in R to iterate across multiple elements and apply some operation to each. Writing for loops from scratch is a critical skill for any data scientist. But there are also some helpful alternatives! 
 In this session, I'll:
 
-1. Introduce myself and briefly describe my background in environmental data science (20 min)
+1. Introduce myself and briefly describe my background in environmental data science (20 - 30 min)
 
 2. Demo several other useful options for iteration with tidyverse functions `dplyr::across()` and `dplyr::rowwise()` 
 
 # Set-up
 
-- Create a new R script or R Markdown document
+- Create a new R script or R Markdown document OR click the Code > Download button at the top of the shared link to download the pre-populated .Rmd
 - Attach the `tidyverse` and `palmerpenguins` packages
 
 ```{r}
@@ -125,13 +126,20 @@ penguins %>%
 
 ### Example 3: Within `summarize()` to find summary statistics by column
 
-Find the mean and standard deviation of all columns that end with `mm`:
+Find the mean of all columns that end with `mm`:
 ```{r}
 penguins %>% 
   summarize(across(ends_with("mm"), mean, na.rm = TRUE))
 ```
 
 ### Example 4: Within `group_by() %>% summarize()`
+
+Find the mean of all columns that start with `bill` by `species`:
+```{r}
+penguins %>% 
+  group_by(species) %>% 
+  summarize(across(starts_with("bill"), mean, na.rm = TRUE))
+```
 
 ## dplyr::rowwise()
 
@@ -153,7 +161,7 @@ df %>%
   kable_styling(full_width = FALSE)
 ```
 
-What happens if we use `mutate()` to find the mean of each *row*? 
+What happens if we try to use `mutate()` to find the mean of each *row*? 
 
 ```{r}
 df %>% 
@@ -168,14 +176,39 @@ df %>%
 
 Hmm...that is not what we would expect. This finds the mean of *all* values in the data frame and returns that in the new column. 
 
-#### ASIDE: Vectorized functions!
-
 So how do we specify that we want to loop across each row? Use `rowwise()`!
 
 ```{r}
 df %>% 
   rowwise() %>% 
   mutate(mean_val = mean(c(col_a, col_b)))
+```
+
+### Example 5: `rowwise() %>% mutate()` to add a column with a value calculated across rows
+
+Starting with penguins, let's create a `rowwise()` data frame, then add a new column that is the sum of all values in columns of class `double`. First, let's chat about what that might look like. 
+
+```{r}
+penguins %>% 
+  rowwise() %>% 
+  mutate(sum_bill = sum(across(where(is.double))))
+```
+
+### Example 6: `rowwise() %>% summarize()` to calculate a summary statistics by row
+
+Starting with penguins, let's use `summarize()` to calculate and return a single summry statistic by row. 
+
+```{r}
+penguins %>% 
+  rowwise() %>% 
+  summarize(sum_bill = sum(c(bill_length_mm, bill_depth_mm)))
+```
+
+**Let's compare this:** What is the output if we don't use `rowwise()` here?
+
+```{r}
+penguins %>% 
+  summarize(sum_bill = sum(c(bill_length_mm, bill_depth_mm)))
 ```
 
 # Resources 
@@ -204,7 +237,7 @@ The general structure of `lapply()`:
 lapply(vector / list, FUN = function)
 ```
 
-#### Example: 
+#### Example: basic `apply()` over columns
 
 ```{r}
 mtcars %>% 
@@ -224,3 +257,5 @@ penguins %>%
 ```
 
 - Tidyverse `purrr::map()` [documentation](https://purrr.tidyverse.org/reference/map.html)
+
+### End - have fun embracing OR avoiding for loops!
