@@ -248,6 +248,8 @@ mtcars %>%
 
 You can use `purrr::map()` to iterate over pretty much anything - just consider it might be a bigger tool than you need (e.g. if `across()` or `rowwise()` does what you need, you may not need to worry about `purrr`).
 
+Use `purrr::map()` to "apply a function to each element of a list or atomic vector." 
+
 ```{r}
 penguins %>% 
   split(.$species) %>%
